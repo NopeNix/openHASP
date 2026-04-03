@@ -89,8 +89,12 @@ static inline bool drv_touchpad_getXY(int16_t* touchX, int16_t* touchY)
     bool touched;
     int16_t normal_x;
     int16_t normal_y;
-#if TOUCH_DRIVER == 0x2046 // XPT2046 Resistive touch panel driver
+#if TOUCH_DRIVER == 0x2046 && !defined(HASP_USE_ARDUINOGFX) // XPT2046 Resistive touch panel driver (TFT_eSPI only)
     touched = haspTft.tft.getTouch((uint16_t*)&normal_x, (uint16_t*)&normal_y, 300);
+
+#elif TOUCH_DRIVER == 0x2046 && defined(HASP_USE_ARDUINOGFX)
+    // XPT2046 with ArduinoGFX is handled in touch_driver_xpt2046.cpp
+    touched = false;
 
 #elif TOUCH_DRIVER == 0x2046B
     touched     = XPT2046_getXY(&normal_x, &normal_y, true);

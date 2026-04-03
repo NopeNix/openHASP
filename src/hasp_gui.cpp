@@ -326,7 +326,7 @@ void guiSetup()
     LOG_TRACE(TAG_GUI, F("Initialize Cursor"));
     lv_obj_t* mouse_layer = lv_disp_get_layer_sys(NULL); // default display
 
-#if defined(ARDUINO_ARCH_ESP32)
+#if defined(ARDUINO_ARCH_ESP32) && (TOUCH_DRIVER != -1 || USE_MONITOR)
     Preferences preferences;
     nvs_user_begin(preferences, "gui", true);
     // indev_drv.drag_limit           = preferences.getUChar(key, LV_INDEV_DEF_DRAG_LIMIT);

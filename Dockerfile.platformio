@@ -1,0 +1,28 @@
+# PlatformIO Build Environment for OpenHasp
+FROM python:3.11-slim
+
+# Install system dependencies including FreeType
+RUN apt-get update && apt-get install -y \
+    git \
+    wget \
+    curl \
+    build-essential \
+    libffi-dev \
+    libssl-dev \
+    usbutils \
+    udev \
+    libfreetype6-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install PlatformIO
+RUN pip install --upgrade pip && \
+    pip install platformio
+
+# Pre-install ESP32 platform to speed up first build
+RUN pio platform install espressif32@6.5.0
+
+# Set working directory
+WORKDIR /workspace
+
+# Default command
+CMD ["/bin/bash"]

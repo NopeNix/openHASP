@@ -50,7 +50,12 @@ class BaseTouch {
 #define TOUCH_DRIVER -1 // No Touch
 #endif
 
-#if TOUCH_DRIVER == 0x2046 && defined(USER_SETUP_LOADED)
+#if TOUCH_DRIVER == 0x2046 && defined(HASP_USE_ARDUINOGFX)
+#define XPT2046_DRIVER 1
+#warning Building for ArduinoGFX XPT2046
+#include "touch_driver_xpt2046.h"
+#elif TOUCH_DRIVER == 0x2046 && defined(USER_SETUP_LOADED)
+#define XPT2046_DRIVER 1
 #warning Building for TFT_eSPI XPT2046
 //#include "touch_driver_xpt2046.h"
 #include "touch_driver_tftespi.h"
