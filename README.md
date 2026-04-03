@@ -38,6 +38,29 @@ The **Sunton ESP32-8048S043R** is a 4.3" 800x480 display with:
 
 ---
 
+## 📦 Download Pre-Built Firmware
+
+**Latest Release:** [![GitHub release](https://img.shields.io/github/v/release/NopeNix/openHASP?include_prereleases)](https://github.com/NopeNix/openHASP/releases/latest)
+
+### Latest Firmware (v0.7.0.2-NopeNix)
+
+| File | Size | Description |
+|------|------|-------------|
+| **[sunton-8048s043r_full_16MB_*.bin](https://github.com/NopeNix/openHASP/releases/latest)** | 1.7 MB | **Full firmware** - Use for first flash |
+| **[sunton-8048s043r_ota_*.bin](https://github.com/NopeNix/openHASP/releases/latest)** | 1.6 MB | OTA update image |
+
+### Quick Flash
+
+```bash
+# Download latest release, then flash:
+esptool.py --chip esp32s3 --port /dev/ttyUSB0 --baud 921600 \
+  write_flash 0x0 sunton-8048s043r_full_16MB_*.bin
+```
+
+**[View All Releases →](https://github.com/NopeNix/openHASP/releases)**
+
+---
+
 ## Quick Start - Docker Build (Recommended)
 
 ### Prerequisites
@@ -172,6 +195,23 @@ The XPT2046 touch controller may need calibration. Adjust these values in the co
 
 ### Web Editor Not Saving
 The ACE 1.43.6 CDN was broken. This fork uses 1.43.3 which works correctly.
+
+---
+
+## Automatic Builds
+
+This repository uses **GitHub Actions** to automatically build and release firmware:
+
+- ✅ **Every push to `master`** triggers a new build
+- ✅ **Automatic releases** created with firmware binaries
+- ✅ **Version tracking** via git commit hash
+- ✅ **Build artifacts** available for download
+
+### Build Status
+
+[![Build and Release](https://github.com/NopeNix/openHASP/actions/workflows/build-and-release.yml/badge.svg)](https://github.com/NopeNix/openHASP/actions/workflows/build-and-release.yml)
+
+[View Build History →](https://github.com/NopeNix/openHASP/actions)
 
 ---
 
