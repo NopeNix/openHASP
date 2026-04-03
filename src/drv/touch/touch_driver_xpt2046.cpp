@@ -150,6 +150,38 @@ void TouchXpt2046::set_rotation(uint8_t rotation)
     xpt2046_ts.setRotation(_rotation);
 }
 
+void TouchXpt2046::calibrate(uint16_t* calData)
+{
+    // XPT2046 calibration using 4-point calibration
+    // calData[0-3] = min_x, max_x, min_y, max_y (raw touch values)
+    // calData[4] = flags (bit 0: x_inv, bit 1: y_inv, bit 2: xy_swap)
+    
+    // If calData is valid (not all zeros or defaults), apply it
+    if(calData[0] != 0 || calData[1] != 0 || calData[2] != 0 || calData[3] != 0) {
+        _min_x = calData[0];
+        _max_x = calData[1];
+        _min_y = calData[2];
+        _max_y = calData[3];
+        
+        LOG_INFO(TAG_DRVR, "XPT2046 calibration applied: X[%d-%d] Y[%d-%d]", 
+                 _min_x, _max_x, _min_y, _max_y);
+    } else {
+        // Use compile-time defaults
+        _min_x = XPT2046_X_MIN;
+        _max_x = XPT2046_X_MAX;
+        _min_y = XPT2046_Y_MIN;
+        _max_y = XPT2046_Y_MAX;
+        
+        LOG_INFO(TAG_DRVR, "XPT2046 using default calibration");
+    }
+}
+
+void TouchXpt2046::set_calibration(uint16_t* calData)
+{
+    // Same as calibrate - set the calibration values
+    calibrate(calData);
+}
+
 } // namespace dev
 
 dev::TouchXpt2046 haspTouch;

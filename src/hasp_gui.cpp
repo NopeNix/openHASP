@@ -149,7 +149,7 @@ IRAM_ATTR bool gui_touch_read(lv_indev_drv_t* indev_driver, lv_indev_data_t* dat
 
 void guiCalibrate(void)
 {
-#if TOUCH_DRIVER == 0x2046 //&& defined(USER_SETUP_LOADED)
+#if TOUCH_DRIVER == 0x2046
     haspTouch.calibrate(gui_settings.cal_data);
 
     // size_t len = sizeof(gui_settings.cal_data) / sizeof(gui_settings.cal_data[0]);
@@ -526,6 +526,8 @@ bool guiGetConfig(const JsonObject& settings)
 #elif TOUCH_DRIVER == 0x2046 && defined(HASP_USE_LGFX_TOUCH)
             // haspTft.tft.setTouchCalibrate(gui_settings.cal_data);
             haspTouch.set_calibration(gui_settings.cal_data);
+#elif TOUCH_DRIVER == 0x2046 && defined(HASP_USE_ARDUINOGFX)
+            haspTouch.set_calibration(gui_settings.cal_data);
 #endif
         }
         i++;
@@ -544,6 +546,8 @@ bool guiGetConfig(const JsonObject& settings)
         haspTouch.set_calibration(gui_settings.cal_data);
 #elif TOUCH_DRIVER == 0x2046 && defined(HASP_USE_LGFX_TOUCH)
         // haspTft.tft.setTouchCalibrate(gui_settings.cal_data);
+        haspTouch.set_calibration(gui_settings.cal_data);
+#elif TOUCH_DRIVER == 0x2046 && defined(HASP_USE_ARDUINOGFX)
         haspTouch.set_calibration(gui_settings.cal_data);
 #endif
     }
@@ -621,6 +625,8 @@ bool guiSetConfig(const JsonObject& settings)
         if(status) haspTouch.set_calibration(gui_settings.cal_data);
 #elif TOUCH_DRIVER == 0x2046 && defined(HASP_USE_LGFX_TOUCH)
         // haspTft.tft.setTouchCalibrate(gui_settings.cal_data);
+        if(status) haspTouch.set_calibration(gui_settings.cal_data);
+#elif TOUCH_DRIVER == 0x2046 && defined(HASP_USE_ARDUINOGFX)
         if(status) haspTouch.set_calibration(gui_settings.cal_data);
 #endif
 
