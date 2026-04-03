@@ -524,6 +524,9 @@ bool guiGetConfig(const JsonObject& settings)
             // haspTft.tft.setTouch(gui_settings.cal_data);
             haspTouch.set_calibration(gui_settings.cal_data);
 #elif TOUCH_DRIVER == 0x2046 && defined(HASP_USE_LGFX_TOUCH)
+            haspTouch.set_calibration(gui_settings.cal_data);
+#elif TOUCH_DRIVER == 0x2046 && defined(HASP_USE_ARDUINOGFX)
+            haspTouch.set_calibration(gui_settings.cal_data);
             // haspTft.tft.setTouchCalibrate(gui_settings.cal_data);
             haspTouch.set_calibration(gui_settings.cal_data);
 #endif
@@ -543,6 +546,9 @@ bool guiGetConfig(const JsonObject& settings)
         // haspTft.tft.setTouch(gui_settings.cal_data);
         haspTouch.set_calibration(gui_settings.cal_data);
 #elif TOUCH_DRIVER == 0x2046 && defined(HASP_USE_LGFX_TOUCH)
+            haspTouch.set_calibration(gui_settings.cal_data);
+#elif TOUCH_DRIVER == 0x2046 && defined(HASP_USE_ARDUINOGFX)
+            haspTouch.set_calibration(gui_settings.cal_data);
         // haspTft.tft.setTouchCalibrate(gui_settings.cal_data);
         haspTouch.set_calibration(gui_settings.cal_data);
 #endif
@@ -620,6 +626,9 @@ bool guiSetConfig(const JsonObject& settings)
         // haspTft.tft.setTouch(gui_settings.cal_data);
         if(status) haspTouch.set_calibration(gui_settings.cal_data);
 #elif TOUCH_DRIVER == 0x2046 && defined(HASP_USE_LGFX_TOUCH)
+            haspTouch.set_calibration(gui_settings.cal_data);
+#elif TOUCH_DRIVER == 0x2046 && defined(HASP_USE_ARDUINOGFX)
+            haspTouch.set_calibration(gui_settings.cal_data);
         // haspTft.tft.setTouchCalibrate(gui_settings.cal_data);
         if(status) haspTouch.set_calibration(gui_settings.cal_data);
 #endif

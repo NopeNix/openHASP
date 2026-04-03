@@ -15,6 +15,8 @@ class TouchXpt2046 : public BaseTouch {
     IRAM_ATTR bool read(lv_indev_drv_t* indev_driver, lv_indev_data_t* data);
     void init(int w, int h);
     void set_rotation(uint8_t rotation);
+    void set_calibration(uint16_t* calData);
+    void calibrate(uint16_t* calData);
 
   private:
     uint8_t _rotation;
