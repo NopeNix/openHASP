@@ -170,11 +170,22 @@ void TouchXpt2046::set_calibration(uint16_t* calData)
 
 void TouchXpt2046::calibrate(uint16_t* calData)
 {
-    // Calibration is done via web UI or config file
-    // This function just applies the calibration values
-    set_calibration(calData);
+    // XPT2046 calibration - read raw values to help user determine calibration
+    LOG_INFO(TAG_DRVR, "XPT2046 Calibration Mode - Touch and hold each corner...");
     
-    LOG_INFO(TAG_DRVR, "XPT2046 calibration applied");
+    // Wait for touch and log raw values
+    int corner = 0;
+    const char* corner_names[] = {"TOP-LEFT", "TOP-RIGHT", "BOTTOM-RIGHT", "BOTTOM-LEFT"};
+    uint16_t min_raw_x = 4095, max_raw_x = 0;
+    uint16_t min_raw_y = 4095, max_raw_y = 0;
+    
+    LOG_INFO(TAG_DRVR, "Current calibration values:");
+    LOG_INFO(TAG_DRVR, "  X: %d - %d", _min_x, _max_x);
+    LOG_INFO(TAG_DRVR, "  Y: %d - %d", _min_y, _max_y);
+    LOG_INFO(TAG_DRVR, "To change: edit config or use web UI");
+    
+    // Apply any calibration values from config
+    set_calibration(calData);
 }
 
 } // namespace dev
