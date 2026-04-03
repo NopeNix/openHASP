@@ -1,0 +1,130 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ master, main ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ master, main ]
+
+env:
+  TARGET_ENV: sunton-8048s043r_16MB
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        fetch-depth: 0
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build Docker image
+      run: |
+        docker build -t openhasp-builder -f Dockerfile.platformio .
+    
+    - name: Build firmware
+      run: |
+        docker run --rm -v "$(pwd):/workspace" \
+          -v "openhasp-pio-cache:/root/.platformio" \
+          -w /workspace openhasp-builder \
+          pio run -e ${{ env.TARGET_ENV }}
+    
+    - name: List build outputs
+      run: |
+        echo "=== Build outputs ==="
+        ls -lah .pio/build/${{ env.TARGET_ENV }}/
+        echo ""
+        echo "=== Release outputs ==="
+        ls -lah build_output/firmware/ || echo "No release output directory"
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: firmware-${{ env.TARGET_ENV }}
+        path: |
+          build_output/firmware/*.bin
+          .pio/build/${{ env.TARGET_ENV }}/firmware.bin
+        if-no-files-found: error
+    
+    - name: Get version info
+      id: get_version
+      run: |
+        # Extract version from platformio.ini
+        VERSION=$(grep "HASP_VER_REV" platformio.ini | head -1 | sed 's/.*HASP_VER_REV=//' | tr -d ' \t')
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        echo "Build version: $VERSION"
+    
+    - name: Create Release
+      if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ steps.get_version.outputs.version }}-${{ steps.get_version.outputs.short_sha }}
+        name: openHASP v${{ steps.get_version.outputs.version }} (Sunton 8048S043R)
+        body: |
+          ## openHASP Firmware for Sunton ESP32-8048S043R
+          
+          **Version:** ${{ steps.get_version.outputs.version }}  
+          **Commit:** ${{ github.sha }}  
+          **Build Date:** ${{ github.event.head_commit.timestamp }}
+          
+          ### What's Included
+          - XPT2046 Resistive Touch Support
+          - ArduinoGFX Display Driver
+          - Docker-based reproducible build
+          - Fixed ACE Editor (1.43.3)
+          
+          ### Hardware
+          - **Board:** Sunton ESP32-8048S043R
+          - **Flash:** 16MB
+          - **Display:** 800x480 ST7262 RGB
+          - **Touch:** XPT2046 SPI
+          
+          ### Flashing Instructions
+          ```bash
+          esptool.py --chip esp32s3 --port /dev/ttyUSB0 --baud 921600 \
+            write_flash 0x0 sunton-8048s043r_full_16MB_*.bin
+          ```
+          
+          ### Files
+          - `sunton-8048s043r_full_16MB_*.bin` - Full firmware image (first flash)
+          - `sunton-8048s043r_ota_*.bin` - OTA update image
+          
+          ### Documentation
+          - [README](https://github.com/${{ github.repository }}/blob/master/README.md)
+          - [CHANGES](https://github.com/${{ github.repository }}/blob/master/CHANGES.md)
+          
+          ### Docker Build
+          ```bash
+          docker build -t openhasp-builder -f Dockerfile.platformio .
+          docker run --rm -v "$(pwd):/workspace" openhasp-builder \
+            pio run -e sunton-8048s043r_16MB
+          ```
+        files: |
+          build_output/firmware/*.bin
+        fail_on_unmatched_files: false
+        generate_release_notes: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-status:
+    needs: build
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+    - name: Build Status
+      run: |
+        if [ "${{ needs.build.result }}" == "success" ]; then
+          echo "✅ Build successful!"
+          exit 0
+        else
+          echo "❌ Build failed!"
+          exit 1
+        fi
