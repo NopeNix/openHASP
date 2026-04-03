@@ -1,4 +1,4 @@
-name: Build and Release
+name: Build Firmware
 
 on:
   push:
@@ -7,6 +7,13 @@ on:
       - 'v*'
   pull_request:
     branches: [ master, main ]
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Create Release?'
+        required: true
+        default: false
+        type: boolean
 
 env:
   TARGET_ENV: sunton-8048s043r_16MB
@@ -39,7 +46,7 @@ jobs:
     - name: List build outputs
       run: |
         echo "=== Build outputs ==="
-        ls -lah .pio/build/${{ env.TARGET_ENV }}/
+        ls -lah .pio/build/${{ env.TARGET_ENV }} /
         echo ""
         echo "=== Release outputs ==="
         ls -lah build_output/firmware/ || echo "No release output directory"
@@ -61,9 +68,31 @@ jobs:
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
         echo "Build version: $VERSION"
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    # Only create release if manually triggered with create_release=true
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.create_release == 'true'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: firmware-${{ env.TARGET_ENV }}
+        path: build_output/firmware/
+    
+    - name: Get version info
+      id: get_version
+      run: |
+        VERSION=$(grep "HASP_VER_REV" platformio.ini | head -1 | sed 's/.*HASP_VER_REV=//' | tr -d ' \t')
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
     
     - name: Create Release
-      if: github.event_name == 'push' && github.ref == 'refs/heads/master'
       uses: softprops/action-gh-release@v1
       with:
         tag_name: v${{ steps.get_version.outputs.version }}-${{ steps.get_version.outputs.short_sha }}
