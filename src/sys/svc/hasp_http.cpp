@@ -1620,6 +1620,23 @@ static void http_handle_gui()
   <div class="col-25"><label for="xpt_smoothing_permille">XPT Smoothing <i><small>(default: 700‰; typical 500–850) exponential smoothing (higher = steadier, slower)</small></i></label></div>
   <div class="col-75"><input type="number" id="xpt_smoothing_permille" min="0" max="1000" v-model="config.gui.xpt_smoothing_permille"></div>
 </div>)";
+
+        // Pressure-compensation parameters
+#if TOUCH_DRIVER == 0x2046 && defined(TOUCH_CS)
+    html[min(i++, len)] = R"(
+<div class="row gap">
+  <div class="col-25"><label for="xpt_pressure_ref">XPT Pressure Ref <i><small>(default: 1000) used as baseline for compensation</small></i></label></div>
+  <div class="col-75"><input type="number" id="xpt_pressure_ref" min="1" max="4095" v-model="config.gui.xpt_pressure_ref"></div>
+</div>
+<div class="row gap">
+  <div class="col-25"><label for="xpt_pressure_x_coeff">XPT Pressure X Coeff <i><small>(default: 0) px shift per 1000(Z-ref)</small></i></label></div>
+  <div class="col-75"><input type="number" id="xpt_pressure_x_coeff" min="-500" max="500" v-model="config.gui.xpt_pressure_x_coeff"></div>
+</div>
+<div class="row gap">
+  <div class="col-25"><label for="xpt_pressure_y_coeff">XPT Pressure Y Coeff <i><small>(default: 0) px shift per 1000(Z-ref)</small></i></label></div>
+  <div class="col-75"><input type="number" id="xpt_pressure_y_coeff" min="-500" max="500" v-model="config.gui.xpt_pressure_y_coeff"></div>
+</div>)";
+#endif
 #endif
 
     html[min(i++, len)] = R"(<button type="submit" v-t="'save'"></button></form></div>)";

@@ -525,6 +525,15 @@ bool guiGetConfig(const JsonObject& settings)
     if(gui_settings.xpt_smoothing_permille != settings[FPSTR(FP_GUI_XPT_SMOOTHING)].as<uint16_t>()) changed = true;
     settings[FPSTR(FP_GUI_XPT_SMOOTHING)] = gui_settings.xpt_smoothing_permille;
 
+    if(gui_settings.xpt_pressure_ref != settings[FPSTR(FP_GUI_XPT_PRESSURE_REF)].as<uint16_t>()) changed = true;
+    settings[FPSTR(FP_GUI_XPT_PRESSURE_REF)] = gui_settings.xpt_pressure_ref;
+
+    if(gui_settings.xpt_pressure_x_coeff != settings[FPSTR(FP_GUI_XPT_PRESSURE_XCOEFF)].as<int32_t>()) changed = true;
+    settings[FPSTR(FP_GUI_XPT_PRESSURE_XCOEFF)] = gui_settings.xpt_pressure_x_coeff;
+
+    if(gui_settings.xpt_pressure_y_coeff != settings[FPSTR(FP_GUI_XPT_PRESSURE_YCOEFF)].as<int32_t>()) changed = true;
+    settings[FPSTR(FP_GUI_XPT_PRESSURE_YCOEFF)] = gui_settings.xpt_pressure_y_coeff;
+
     /* Check CalData array has changed */
     JsonArray array = settings[FPSTR(FP_GUI_CALIBRATION)].as<JsonArray>();
     uint8_t i       = 0;
@@ -606,6 +615,10 @@ bool guiSetConfig(const JsonObject& settings)
     changed |= configSet(gui_settings.xpt_debounce, settings[FPSTR(FP_GUI_XPT_DEBOUNCE)], F("guiXptDebounce"));
     changed |= configSet(gui_settings.xpt_pressure_min, settings[FPSTR(FP_GUI_XPT_PRESSURE_MIN)], F("guiXptPressureMin"));
     changed |= configSet(gui_settings.xpt_smoothing_permille, settings[FPSTR(FP_GUI_XPT_SMOOTHING)], F("guiXptSmoothingPermille"));
+
+    changed |= configSet(gui_settings.xpt_pressure_ref, settings[FPSTR(FP_GUI_XPT_PRESSURE_REF)], F("guiXptPressureRef"));
+    changed |= configSet(gui_settings.xpt_pressure_x_coeff, settings[FPSTR(FP_GUI_XPT_PRESSURE_XCOEFF)], F("guiXptPressureXCoeff"));
+    changed |= configSet(gui_settings.xpt_pressure_y_coeff, settings[FPSTR(FP_GUI_XPT_PRESSURE_YCOEFF)], F("guiXptPressureYCoeff"));
 
     hasp_set_sleep_time(guiSleepTime1, guiSleepTime2);
     haspDevice.set_backlight_invert(backlight_invert); // Update if changed

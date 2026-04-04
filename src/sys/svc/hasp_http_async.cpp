@@ -1322,6 +1322,19 @@ void webHandleGuiConfig(AsyncWebServerRequest* request)
         httpMessage += settings[FPSTR(FP_GUI_XPT_SMOOTHING)].as<String>();
         httpMessage += F("'></p>");
         httpMessage += F("<p><i><small>(default: 700‰; typical 500–850) exponential smoothing (higher = steadier, slower)</small></i></p>");
+#if TOUCH_DRIVER == 0x2046 && defined(TOUCH_CS)
+        httpMessage += F("<p><b>XPT Pressure Ref</b> <input name='xpt_pressure_ref' type='number' min='1' max='4095' value='");
+        httpMessage += settings[FPSTR(FP_GUI_XPT_PRESSURE_REF)].as<String>();
+        httpMessage += F("'></p>");
+
+        httpMessage += F("<p><b>XPT Pressure X Coeff</b> <input name='xpt_pressure_x_coeff' type='number' min='-500' max='500' value='");
+        httpMessage += settings[FPSTR(FP_GUI_XPT_PRESSURE_XCOEFF)].as<String>();
+        httpMessage += F("'></p>");
+
+        httpMessage += F("<p><b>XPT Pressure Y Coeff</b> <input name='xpt_pressure_y_coeff' type='number' min='-500' max='500' value='");
+        httpMessage += settings[FPSTR(FP_GUI_XPT_PRESSURE_YCOEFF)].as<String>();
+        httpMessage += F("'></p>");
+#endif
 #endif
 
         httpMessage += F("<p><input id='inv' name='inv' type='checkbox' ");

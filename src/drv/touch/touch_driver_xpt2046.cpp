@@ -71,6 +71,10 @@ IRAM_ATTR bool TouchXpt2046::read(lv_indev_drv_t* indev_driver, lv_indev_data_t*
                                                                             : gui_settings.xpt_smoothing_permille;
     float smoothing = smoothing_permille / 1000.0f;
 
+    uint16_t pressure_ref = gui_settings.xpt_pressure_ref;
+    int32_t pressure_x_coeff = gui_settings.xpt_pressure_x_coeff;
+    int32_t pressure_y_coeff = gui_settings.xpt_pressure_y_coeff;
+
     // Prevent invalid values
     if(samples < 2) samples = 2;
     if(samples > 10) samples = 10;
@@ -133,6 +137,7 @@ IRAM_ATTR bool TouchXpt2046::read(lv_indev_drv_t* indev_driver, lv_indev_data_t*
             // Calculate average
             int16_t x = sum_x / valid_samples;
             int16_t y = sum_y / valid_samples;
+            uint16_t z_avg = sum_z / valid_samples;
             
             // Apply calibration
             #if XPT2046_XY_SWAP != 0
@@ -158,6 +163,22 @@ IRAM_ATTR bool TouchXpt2046::read(lv_indev_drv_t* indev_driver, lv_indev_data_t*
             #if XPT2046_Y_INV != 0
             y = TFT_HEIGHT - 1 - y;
             #endif
+
+            // Pressure compensation: shift opposite to pressure-induced bias
+            // shift_px = (z_avg - pressure_ref) * coeff / 1000
+            if(pressure_x_coeff != 0 || pressure_y_coeff != 0) {
+                int32_t dz = (int32_t)z_avg - (int32_t)pressure_ref;
+                int32_t x_shift = (dz * pressure_x_coeff) / 1000;
+                int32_t y_shift = (dz * pressure_y_coeff) / 1000;
+                x = (int16_t)(x - x_shift);
+                y = (int16_t)(y - y_shift);
+            }
+
+            // Clamp
+            if(x < 0) x = 0;
+            if(x > (TFT_WIDTH - 1)) x = TFT_WIDTH - 1;
+            if(y < 0) y = 0;
+            if(y > (TFT_HEIGHT - 1)) y = TFT_HEIGHT - 1;
             
             // Apply exponential smoothing to reduce jitter
             if(last_x != 0 || last_y != 0) {

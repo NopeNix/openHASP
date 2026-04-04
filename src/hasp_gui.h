@@ -40,6 +40,14 @@ struct gui_conf_t
     uint8_t  xpt_debounce;             // consecutive samples for state change
     uint16_t xpt_pressure_min;        // min pressure (z) to accept touch
     uint16_t xpt_smoothing_permille; // exponential smoothing weight in permille (0..1000)
+
+    // Pressure-compensation (linear, X/Y in screen px)
+    // delta = (z_avg - xpt_pressure_ref)
+    // shift_px = (delta * coeff) / 1000
+    // where coeff is in px per 1000 Z-units.
+    uint16_t xpt_pressure_ref;      // reference Z/pressure
+    int32_t  xpt_pressure_x_coeff; // px per 1000 Z units
+    int32_t  xpt_pressure_y_coeff; // px per 1000 Z units
 #if defined(USER_SETUP_LOADED)
     uint16_t cal_data[5];
 #else
