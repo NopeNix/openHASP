@@ -1304,17 +1304,24 @@ void webHandleGuiConfig(AsyncWebServerRequest* request)
         httpMessage += settings[FPSTR(FP_GUI_XPT_SAMPLES)].as<String>();
         httpMessage += F("'></p>");
 
+        httpMessage += F("<p><i><small>(default: 5; typical 3–7) avg window for stability (higher = smoother, more lag)</small></i></p>");
+
         httpMessage += F("<p><b>XPT Debounce</b> <input name='xpt_debounce' type='number' min='1' max='10' value='");
         httpMessage += settings[FPSTR(FP_GUI_XPT_DEBOUNCE)].as<String>();
         httpMessage += F("'></p>");
+
+        httpMessage += F("<p><i><small>(default: 3; typical 2–5) consecutive touch/release reads (higher = fewer false taps, more delay)</small></i></p>");
 
         httpMessage += F("<p><b>XPT Pressure Min</b> <input name='xpt_pressure_min' type='number' min='1' max='4095' value='");
         httpMessage += settings[FPSTR(FP_GUI_XPT_PRESSURE_MIN)].as<String>();
         httpMessage += F("'></p>");
 
+        httpMessage += F("<p><i><small>(default: 10; typical 5–30) ignore very light/ghost touches (higher = fewer ghosts, may miss light taps)</small></i></p>");
+
         httpMessage += F("<p><b>XPT Smoothing (permille)</b> <input name='xpt_smoothing_permille' type='number' min='0' max='1000' value='");
         httpMessage += settings[FPSTR(FP_GUI_XPT_SMOOTHING)].as<String>();
         httpMessage += F("'></p>");
+        httpMessage += F("<p><i><small>(default: 700‰; typical 500–850) exponential smoothing (higher = steadier, slower)</small></i></p>");
 #endif
 
         httpMessage += F("<p><input id='inv' name='inv' type='checkbox' ");
