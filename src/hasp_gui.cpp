@@ -51,10 +51,14 @@ static TaskHandle_t g_lvgl_task_handle;
 // HASP_ATTRIBUTE_FAST_MEM static void  lv_tick_handler(void);
 
 gui_conf_t gui_settings = {.show_pointer   = false,
-                           .backlight_pin  = TFT_BCKL,
-                           .rotation       = TFT_ROTATION,
-                           .invert_display = INVERT_COLORS,
-                           .cal_data       = {0, 65535, 0, 65535, 0}};
+                            .backlight_pin  = TFT_BCKL,
+                            .rotation       = TFT_ROTATION,
+                            .invert_display = INVERT_COLORS,
+                            .xpt_samples = 5,
+                            .xpt_debounce = 3,
+                            .xpt_pressure_min = 10,
+                            .xpt_smoothing_permille = 700,
+                            .cal_data       = {0, 65535, 0, 65535, 0}};
 lv_obj_t* cursor;
 
 uint16_t tft_width  = TFT_WIDTH;
@@ -508,6 +512,19 @@ bool guiGetConfig(const JsonObject& settings)
     if(gui_settings.invert_display != settings[FPSTR(FP_GUI_INVERT)].as<bool>()) changed = true;
     settings[FPSTR(FP_GUI_INVERT)] = (uint8_t)gui_settings.invert_display;
 
+    // XPT2046 touch filtering parameters (ArduinoGFX driver)
+    if(gui_settings.xpt_samples != settings[FPSTR(FP_GUI_XPT_SAMPLES)].as<uint8_t>()) changed = true;
+    settings[FPSTR(FP_GUI_XPT_SAMPLES)] = gui_settings.xpt_samples;
+
+    if(gui_settings.xpt_debounce != settings[FPSTR(FP_GUI_XPT_DEBOUNCE)].as<uint8_t>()) changed = true;
+    settings[FPSTR(FP_GUI_XPT_DEBOUNCE)] = gui_settings.xpt_debounce;
+
+    if(gui_settings.xpt_pressure_min != settings[FPSTR(FP_GUI_XPT_PRESSURE_MIN)].as<uint16_t>()) changed = true;
+    settings[FPSTR(FP_GUI_XPT_PRESSURE_MIN)] = gui_settings.xpt_pressure_min;
+
+    if(gui_settings.xpt_smoothing_permille != settings[FPSTR(FP_GUI_XPT_SMOOTHING)].as<uint16_t>()) changed = true;
+    settings[FPSTR(FP_GUI_XPT_SMOOTHING)] = gui_settings.xpt_smoothing_permille;
+
     /* Check CalData array has changed */
     JsonArray array = settings[FPSTR(FP_GUI_CALIBRATION)].as<JsonArray>();
     uint8_t i       = 0;
@@ -583,6 +600,12 @@ bool guiSetConfig(const JsonObject& settings)
     changed |= configSet(guiSleepTime2, settings[FPSTR(FP_GUI_IDLEPERIOD2)], F("guiSleepTime2"));
     changed |= configSet(gui_settings.rotation, settings[FPSTR(FP_GUI_ROTATION)], F("gui_settings.rotation"));
     changed |= configSet(gui_settings.invert_display, settings[FPSTR(FP_GUI_INVERT)], F("guiInvertDisplay"));
+
+    // XPT2046 touch filtering parameters (ArduinoGFX driver)
+    changed |= configSet(gui_settings.xpt_samples, settings[FPSTR(FP_GUI_XPT_SAMPLES)], F("guiXptSamples"));
+    changed |= configSet(gui_settings.xpt_debounce, settings[FPSTR(FP_GUI_XPT_DEBOUNCE)], F("guiXptDebounce"));
+    changed |= configSet(gui_settings.xpt_pressure_min, settings[FPSTR(FP_GUI_XPT_PRESSURE_MIN)], F("guiXptPressureMin"));
+    changed |= configSet(gui_settings.xpt_smoothing_permille, settings[FPSTR(FP_GUI_XPT_SMOOTHING)], F("guiXptSmoothingPermille"));
 
     hasp_set_sleep_time(guiSleepTime1, guiSleepTime2);
     haspDevice.set_backlight_invert(backlight_invert); // Update if changed

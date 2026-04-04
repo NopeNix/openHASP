@@ -1574,8 +1574,8 @@ static void http_handle_gui()
 <label for="cursor">Show Pointer</label></div>
 </div>
 <div class="row">
-<div class="col-25"><label for="group">Backlight Pin</label></div>
-<div class="col-75"><select id="bckl" v-model="config.gui.bckl">)";
+    <div class="col-25"><label for="group">Backlight Pin</label></div>
+    <div class="col-75"><select id="bckl" v-model="config.gui.bckl">)";
 
     String httpGpio((char*)0);
     httpGpio.reserve(256);
@@ -1596,10 +1596,32 @@ static void http_handle_gui()
 </select></div>
 </div>
 <div class="row">
-<div class="col-25"></div>
-<div class="col-75"><input type="checkbox" id="bcklinv" @vue:mounted="config.gui.bcklinv=!!config.gui.bcklinv" v-model="config.gui.bcklinv">
+    <div class="col-25"></div>
+    <div class="col-75"><input type="checkbox" id="bcklinv" @vue:mounted="config.gui.bcklinv=!!config.gui.bcklinv" v-model="config.gui.bcklinv">
     <label for="bcklinv">Invert Backlight</label></div>
 </div>)";
+
+    // XPT2046 touch filtering parameters (only show for 8048S043R / XPT2046 builds)
+#if TOUCH_DRIVER == 0x2046 && defined(TOUCH_CS)
+    html[min(i++, len)] = R"(
+<div class="row gap">
+  <div class="col-25"><label for="xpt_samples">XPT Samples</label></div>
+  <div class="col-75"><input type="number" id="xpt_samples" min="2" max="10" v-model="config.gui.xpt_samples"></div>
+</div>
+<div class="row gap">
+  <div class="col-25"><label for="xpt_debounce">XPT Debounce</label></div>
+  <div class="col-75"><input type="number" id="xpt_debounce" min="1" max="10" v-model="config.gui.xpt_debounce"></div>
+</div>
+<div class="row gap">
+  <div class="col-25"><label for="xpt_pressure_min">XPT Pressure Min</label></div>
+  <div class="col-75"><input type="number" id="xpt_pressure_min" min="1" max="4095" v-model="config.gui.xpt_pressure_min"></div>
+</div>
+<div class="row gap">
+  <div class="col-25"><label for="xpt_smoothing_permille">XPT Smoothing</label></div>
+  <div class="col-75"><input type="number" id="xpt_smoothing_permille" min="0" max="1000" v-model="config.gui.xpt_smoothing_permille"></div>
+</div>)";
+#endif
+
     html[min(i++, len)] = R"(<button type="submit" v-t="'save'"></button></form></div>)";
 #if TOUCH_DRIVER == 0x2046 && defined(TOUCH_CS)
     html[min(i++, len)] = R"(<a v-t="'gui.calibrate'" href="/config/gui?cal=1"></a>)";

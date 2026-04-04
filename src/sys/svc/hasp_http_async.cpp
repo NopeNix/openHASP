@@ -1298,6 +1298,25 @@ void webHandleGuiConfig(AsyncWebServerRequest* request)
         httpMessage += getOption(5, F("270 degrees - mirrored"), rotation == 5);
         httpMessage += F("</select></p>");
 
+#if TOUCH_DRIVER == 0x2046 && defined(TOUCH_CS)
+        // XPT2046 touch filtering parameters
+        httpMessage += F("<p><b>XPT Samples</b> <input name='xpt_samples' type='number' min='2' max='10' value='");
+        httpMessage += settings[FPSTR(FP_GUI_XPT_SAMPLES)].as<String>();
+        httpMessage += F("'></p>");
+
+        httpMessage += F("<p><b>XPT Debounce</b> <input name='xpt_debounce' type='number' min='1' max='10' value='");
+        httpMessage += settings[FPSTR(FP_GUI_XPT_DEBOUNCE)].as<String>();
+        httpMessage += F("'></p>");
+
+        httpMessage += F("<p><b>XPT Pressure Min</b> <input name='xpt_pressure_min' type='number' min='1' max='4095' value='");
+        httpMessage += settings[FPSTR(FP_GUI_XPT_PRESSURE_MIN)].as<String>();
+        httpMessage += F("'></p>");
+
+        httpMessage += F("<p><b>XPT Smoothing (permille)</b> <input name='xpt_smoothing_permille' type='number' min='0' max='1000' value='");
+        httpMessage += settings[FPSTR(FP_GUI_XPT_SMOOTHING)].as<String>();
+        httpMessage += F("'></p>");
+#endif
+
         httpMessage += F("<p><input id='inv' name='inv' type='checkbox' ");
         if(settings[FPSTR(FP_GUI_INVERT)].as<bool>()) httpMessage += F(" checked");
         httpMessage += F("><b>Invert Colors</b>");

@@ -33,12 +33,22 @@ struct gui_conf_t
     int8_t backlight_pin;
     uint8_t rotation;
     uint8_t invert_display;
+
+    // XPT2046 touch filtering parameters (ArduinoGFX driver only)
+    // Stored in GUI config so users can tune jitter filtering.
+    uint8_t  xpt_samples;              // samples averaged per read
+    uint8_t  xpt_debounce;             // consecutive samples for state change
+    uint16_t xpt_pressure_min;        // min pressure (z) to accept touch
+    uint16_t xpt_smoothing_permille; // exponential smoothing weight in permille (0..1000)
 #if defined(USER_SETUP_LOADED)
     uint16_t cal_data[5];
 #else
     uint16_t cal_data[8];
 #endif
 };
+
+// Current GUI configuration in RAM (used by touch filtering + GUI pages)
+extern gui_conf_t gui_settings;
 
 /* ===== Default Event Processors ===== */
 void guiTftInit(void);

@@ -15,6 +15,7 @@ SPIClass xpt2046_spi(HSPI);
 #include "../../lib/XPT2046_Touchscreen/XPT2046_Touchscreen.h"
 
 #include "touch_driver.h" // base class
+#include "hasp_gui.h" // gui_settings
 #include "../tft/tft_driver_arduinogfx.h" // for haspTft
 
 #include "../../hasp/hasp.h" // for hasp_sleep_state
@@ -49,11 +50,11 @@ XPT2046_Touchscreen xpt2046_ts(TOUCH_CS, TOUCH_IRQ);
 
 namespace dev {
 
-// Touch filtering configuration
-#define XPT2046_SAMPLES      5   // Number of samples to average
-#define XPT2046_DEBOUNCE     3   // Consecutive samples required for state change
-#define XPT2046_PRESSURE_MIN 10  // Minimum pressure (z) to register touch
-#define XPT2046_SMOOTHING    0.7f // Exponential smoothing factor (0-1, higher = more smoothing)
+// Touch filtering defaults (overridable via GUI config)
+#define XPT2046_SAMPLES_DEFAULT      5   // Number of samples to average
+#define XPT2046_DEBOUNCE_DEFAULT     3   // Consecutive samples required for state change
+#define XPT2046_PRESSURE_MIN_DEFAULT 10  // Minimum pressure (z) to register touch
+#define XPT2046_SMOOTHING_DEFAULT_PERMILLE 700 // Exponential smoothing weight in permille (0..1000)
 
 IRAM_ATTR bool TouchXpt2046::read(lv_indev_drv_t* indev_driver, lv_indev_data_t* data)
 {
@@ -62,6 +63,21 @@ IRAM_ATTR bool TouchXpt2046::read(lv_indev_drv_t* indev_driver, lv_indev_data_t*
     static bool touch_active = false;    // Current debounced touch state
     static int16_t last_x = 0, last_y = 0; // Last reported coordinates for smoothing
     
+    // Touch filtering parameters (from GUI config)
+    uint8_t samples = (gui_settings.xpt_samples == 0) ? XPT2046_SAMPLES_DEFAULT : gui_settings.xpt_samples;
+    uint8_t debounce = (gui_settings.xpt_debounce == 0) ? XPT2046_DEBOUNCE_DEFAULT : gui_settings.xpt_debounce;
+    uint16_t pressure_min = (gui_settings.xpt_pressure_min == 0) ? XPT2046_PRESSURE_MIN_DEFAULT : gui_settings.xpt_pressure_min;
+    float smoothing_permille = (gui_settings.xpt_smoothing_permille == 0) ? XPT2046_SMOOTHING_DEFAULT_PERMILLE
+                                                                            : gui_settings.xpt_smoothing_permille;
+    float smoothing = smoothing_permille / 1000.0f;
+
+    // Prevent invalid values
+    if(samples < 2) samples = 2;
+    if(samples > 10) samples = 10;
+    if(debounce < 1) debounce = 1;
+    if(debounce > 10) debounce = 10;
+    if(pressure_min < 1) pressure_min = 1;
+
     // Check if touched with pressure validation
     bool raw_touched = xpt2046_ts.touched();
     bool valid_touch = false;
@@ -69,7 +85,7 @@ IRAM_ATTR bool TouchXpt2046::read(lv_indev_drv_t* indev_driver, lv_indev_data_t*
     if(raw_touched) {
         // Quick check of pressure to filter out noise
         TS_Point p = xpt2046_ts.getPoint();
-        if(p.z >= XPT2046_PRESSURE_MIN) {
+        if(p.z >= pressure_min) {
             valid_touch = true;
         }
     }
@@ -84,9 +100,9 @@ IRAM_ATTR bool TouchXpt2046::read(lv_indev_drv_t* indev_driver, lv_indev_data_t*
     }
     
     // Update debounced state
-    if(touch_count >= XPT2046_DEBOUNCE && !touch_active) {
+    if(touch_count >= debounce && !touch_active) {
         touch_active = true;
-    } else if(release_count >= XPT2046_DEBOUNCE && touch_active) {
+    } else if(release_count >= debounce && touch_active) {
         touch_active = false;
     }
     
@@ -98,10 +114,10 @@ IRAM_ATTR bool TouchXpt2046::read(lv_indev_drv_t* indev_driver, lv_indev_data_t*
         int32_t sum_x = 0, sum_y = 0, sum_z = 0;
         uint16_t valid_samples = 0;
         
-        for(int i = 0; i < XPT2046_SAMPLES; i++) {
+        for(int i = 0; i < samples; i++) {
             if(xpt2046_ts.touched()) {
                 TS_Point p = xpt2046_ts.getPoint();
-                if(p.z >= XPT2046_PRESSURE_MIN) {
+                if(p.z >= pressure_min) {
                     sum_x += p.x;
                     sum_y += p.y;
                     sum_z += p.z;
@@ -109,11 +125,11 @@ IRAM_ATTR bool TouchXpt2046::read(lv_indev_drv_t* indev_driver, lv_indev_data_t*
                 }
             }
             // Small delay between samples for stability
-            if(i < XPT2046_SAMPLES - 1) delayMicroseconds(100);
+            if(i < samples - 1) delayMicroseconds(100);
         }
         
         // Only process if we got enough valid samples
-        if(valid_samples >= (XPT2046_SAMPLES / 2)) {
+        if(valid_samples >= (samples / 2)) {
             // Calculate average
             int16_t x = sum_x / valid_samples;
             int16_t y = sum_y / valid_samples;
@@ -145,8 +161,8 @@ IRAM_ATTR bool TouchXpt2046::read(lv_indev_drv_t* indev_driver, lv_indev_data_t*
             
             // Apply exponential smoothing to reduce jitter
             if(last_x != 0 || last_y != 0) {
-                x = (int16_t)(XPT2046_SMOOTHING * x + (1.0f - XPT2046_SMOOTHING) * last_x);
-                y = (int16_t)(XPT2046_SMOOTHING * y + (1.0f - XPT2046_SMOOTHING) * last_y);
+                x = (int16_t)(smoothing * x + (1.0f - smoothing) * last_x);
+                y = (int16_t)(smoothing * y + (1.0f - smoothing) * last_y);
             }
             
             // Apply rotation
