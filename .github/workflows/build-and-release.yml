@@ -72,8 +72,8 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
-    # Only create release if manually triggered with create_release=true
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.create_release == 'true'
+    # Create release on tag pushes, and optionally on manual runs
+    if: (github.ref_type == 'tag') || (github.event_name == 'workflow_dispatch' && github.event.inputs.create_release == 'true')
     
     steps:
     - name: Checkout repository
@@ -95,8 +95,8 @@ jobs:
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: v${{ steps.get_version.outputs.version }}-${{ steps.get_version.outputs.short_sha }}
-        name: openHASP v${{ steps.get_version.outputs.version }} (Sunton 8048S043R)
+        tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}-{1}', steps.get_version.outputs.version, steps.get_version.outputs.short_sha) }}
+        name: ${{ github.ref_type == 'tag' && github.ref_name || format('openHASP v{0} (Sunton 8048S043R)', steps.get_version.outputs.version) }}
         body: |
           ## openHASP Firmware for Sunton ESP32-8048S043R
           
