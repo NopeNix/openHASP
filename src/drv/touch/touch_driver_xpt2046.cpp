@@ -15,6 +15,7 @@ SPIClass xpt2046_spi(HSPI);
 #include "../../lib/XPT2046_Touchscreen/XPT2046_Touchscreen.h"
 
 #include "touch_driver.h" // base class
+#include "../tft/tft_driver_arduinogfx.h" // for haspTft
 
 #include "../../hasp/hasp.h" // for hasp_sleep_state
 extern uint8_t hasp_sleep_state;
@@ -170,22 +171,145 @@ void TouchXpt2046::set_calibration(uint16_t* calData)
 
 void TouchXpt2046::calibrate(uint16_t* calData)
 {
-    // XPT2046 calibration - read raw values to help user determine calibration
-    LOG_INFO(TAG_DRVR, "XPT2046 Calibration Mode - Touch and hold each corner...");
+    LOG_INFO(TAG_DRVR, "Starting XPT2046 visual calibration...");
     
-    // Wait for touch and log raw values
-    int corner = 0;
-    const char* corner_names[] = {"TOP-LEFT", "TOP-RIGHT", "BOTTOM-RIGHT", "BOTTOM-LEFT"};
-    uint16_t min_raw_x = 4095, max_raw_x = 0;
-    uint16_t min_raw_y = 4095, max_raw_y = 0;
+    // Colors (RGB565 format)
+    const uint16_t BLACK = 0x0000;
+    const uint16_t WHITE = 0xFFFF;
+    const uint16_t MAGENTA = 0xF81F;
     
-    LOG_INFO(TAG_DRVR, "Current calibration values:");
-    LOG_INFO(TAG_DRVR, "  X: %d - %d", _min_x, _max_x);
-    LOG_INFO(TAG_DRVR, "  Y: %d - %d", _min_y, _max_y);
-    LOG_INFO(TAG_DRVR, "To change: edit config or use web UI");
+    // Margin from edges for calibration points
+    const int margin = 20;
+    const int radius = 5;
     
-    // Apply any calibration values from config
-    set_calibration(calData);
+    // Calibration point positions (screen coordinates)
+    int16_t points[4][2] = {
+        {margin, margin},                           // Top-left
+        {TFT_WIDTH - margin - 1, margin},           // Top-right  
+        {TFT_WIDTH - margin - 1, TFT_HEIGHT - margin - 1}, // Bottom-right
+        {margin, TFT_HEIGHT - margin - 1}           // Bottom-left
+    };
+    
+    // Arrays to store raw touch values for each point
+    uint16_t rawX[4] = {0, 0, 0, 0};
+    uint16_t rawY[4] = {0, 0, 0, 0};
+    
+    // Clear screen
+    haspTft.tft->fillScreen(BLACK);
+    
+    // Show instruction text
+    haspTft.tft->setTextSize(2);
+    haspTft.tft->setTextColor(WHITE, BLACK);
+    haspTft.tft->setCursor(10, TFT_HEIGHT / 2 - 20);
+    haspTft.tft->println("Touch each corner");
+    haspTft.tft->setCursor(10, TFT_HEIGHT / 2 + 10);
+    haspTft.tft->println("as indicated");
+    
+    delay(1000);
+    
+    // Clear screen again
+    haspTft.tft->fillScreen(BLACK);
+    
+    // Calibrate each corner
+    for(int i = 0; i < 4; i++) {
+        // Draw calibration point (crosshair + circle)
+        int16_t x = points[i][0];
+        int16_t y = points[i][1];
+        
+        // Draw circle
+        haspTft.tft->fillCircle(x, y, radius, MAGENTA);
+        // Draw cross
+        haspTft.tft->drawLine(x - radius - 3, y, x + radius + 3, y, WHITE);
+        haspTft.tft->drawLine(x, y - radius - 3, x, y + radius + 3, WHITE);
+        
+        // Wait for touch
+        LOG_INFO(TAG_DRVR, "Touch point %d at (%d, %d)", i + 1, x, y);
+        
+        // Wait for touch press
+        while(!xpt2046_ts.touched()) {
+            delay(10);
+        }
+        
+        // Collect multiple samples for stability
+        uint32_t sumX = 0, sumY = 0;
+        uint16_t samples = 0;
+        uint32_t startTime = millis();
+        
+        // Sample for 500ms while touch is held
+        while(xpt2046_ts.touched() && (millis() - startTime) < 500) {
+            TS_Point p = xpt2046_ts.getPoint();
+            sumX += p.x;
+            sumY += p.y;
+            samples++;
+            delay(10);
+        }
+        
+        if(samples > 0) {
+            rawX[i] = sumX / samples;
+            rawY[i] = sumY / samples;
+            LOG_INFO(TAG_DRVR, "Point %d: raw X=%d, Y=%d", i + 1, rawX[i], rawY[i]);
+        }
+        
+        // Clear the point (draw black over it)
+        haspTft.tft->fillCircle(x, y, radius + 5, BLACK);
+        
+        // Wait for release
+        while(xpt2046_ts.touched()) {
+            delay(10);
+        }
+        
+        delay(200); // Debounce
+    }
+    
+    // Calculate calibration values from corner points
+    // X min/max from left/right points
+    uint16_t xMin = (rawX[0] + rawX[3]) / 2; // Average of left points
+    uint16_t xMax = (rawX[1] + rawX[2]) / 2; // Average of right points
+    
+    // Y min/max from top/bottom points  
+    uint16_t yMin = (rawY[0] + rawY[1]) / 2; // Average of top points
+    uint16_t yMax = (rawY[2] + rawY[3]) / 2; // Average of bottom points
+    
+    // Apply calibration
+    if(xMin < xMax && yMin < yMax) {
+        _min_x = xMin;
+        _max_x = xMax;
+        _min_y = yMin;
+        _max_y = yMax;
+        
+        // Store in calData for saving to config
+        calData[0] = xMin;
+        calData[1] = xMax;
+        calData[2] = yMin;
+        calData[3] = yMax;
+        calData[4] = 0; // flags (can be used for XY swap, inversion)
+        
+        LOG_INFO(TAG_DRVR, "Calibration complete!");
+        LOG_INFO(TAG_DRVR, "X: %d - %d", _min_x, _max_x);
+        LOG_INFO(TAG_DRVR, "Y: %d - %d", _min_y, _max_y);
+        
+        // Show success message
+        haspTft.tft->fillScreen(BLACK);
+        haspTft.tft->setTextSize(2);
+        haspTft.tft->setTextColor(WHITE, BLACK);
+        haspTft.tft->setCursor(TFT_WIDTH / 2 - 60, TFT_HEIGHT / 2 - 10);
+        haspTft.tft->println("Calibration");
+        haspTft.tft->setCursor(TFT_WIDTH / 2 - 40, TFT_HEIGHT / 2 + 20);
+        haspTft.tft->println("Complete!");
+    } else {
+        LOG_ERROR(TAG_DRVR, "Calibration failed - invalid values");
+        
+        // Show error message
+        haspTft.tft->fillScreen(BLACK);
+        haspTft.tft->setTextSize(2);
+        haspTft.tft->setTextColor(0xF800, BLACK); // Red
+        haspTft.tft->setCursor(TFT_WIDTH / 2 - 50, TFT_HEIGHT / 2 - 10);
+        haspTft.tft->println("Calibration");
+        haspTft.tft->setCursor(TFT_WIDTH / 2 - 40, TFT_HEIGHT / 2 + 20);
+        haspTft.tft->println("Failed!");
+    }
+    
+    delay(1000);
 }
 
 } // namespace dev
