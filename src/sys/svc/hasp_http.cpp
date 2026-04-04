@@ -1605,19 +1605,19 @@ static void http_handle_gui()
 #if TOUCH_DRIVER == 0x2046 && defined(TOUCH_CS)
     html[min(i++, len)] = R"(
 <div class="row gap">
-  <div class="col-25"><label for="xpt_samples">XPT Samples <i><small>(default: 5)</small></i></label></div>
+  <div class="col-25"><label for="xpt_samples">XPT Samples <i><small>(default: 5; typical 3–7) avg window for stability (higher = smoother, more lag)</small></i></label></div>
   <div class="col-75"><input type="number" id="xpt_samples" min="2" max="10" v-model="config.gui.xpt_samples"></div>
 </div>
 <div class="row gap">
-  <div class="col-25"><label for="xpt_debounce">XPT Debounce <i><small>(default: 3)</small></i></label></div>
+  <div class="col-25"><label for="xpt_debounce">XPT Debounce <i><small>(default: 3; typical 2–5) consecutive touch/release reads (higher = fewer false taps, more delay)</small></i></label></div>
   <div class="col-75"><input type="number" id="xpt_debounce" min="1" max="10" v-model="config.gui.xpt_debounce"></div>
 </div>
 <div class="row gap">
-  <div class="col-25"><label for="xpt_pressure_min">XPT Pressure Min <i><small>(default: 10)</small></i></label></div>
+  <div class="col-25"><label for="xpt_pressure_min">XPT Pressure Min <i><small>(default: 10; typical 5–30) ignore very light/ghost touches (higher = fewer ghosts, but may miss light taps)</small></i></label></div>
   <div class="col-75"><input type="number" id="xpt_pressure_min" min="1" max="4095" v-model="config.gui.xpt_pressure_min"></div>
 </div>
 <div class="row gap">
-  <div class="col-25"><label for="xpt_smoothing_permille">XPT Smoothing <i><small>(default: 700‰ ≈ 0.7)</small></i></label></div>
+  <div class="col-25"><label for="xpt_smoothing_permille">XPT Smoothing <i><small>(default: 700‰; typical 500–850) exponential smoothing (higher = steadier, slower)</small></i></label></div>
   <div class="col-75"><input type="number" id="xpt_smoothing_permille" min="0" max="1000" v-model="config.gui.xpt_smoothing_permille"></div>
 </div>)";
 #endif
