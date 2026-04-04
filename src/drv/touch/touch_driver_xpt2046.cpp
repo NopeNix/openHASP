@@ -264,31 +264,32 @@ void TouchXpt2046::calibrate(uint16_t* calData)
     }
     
     // Calculate calibration values from corner points
-    // X min/max from left/right points
-    xMin = (rawX[0] + rawX[3]) / 2; // Average of left points
-    xMax = (rawX[1] + rawX[2]) / 2; // Average of right points
+    // X values from left/right points (may be inverted)
+    uint16_t xLeft = (rawX[0] + rawX[3]) / 2;   // Average of left points
+    uint16_t xRight = (rawX[1] + rawX[2]) / 2;  // Average of right points
     
-    // Y min/max from top/bottom points  
-    yMin = (rawY[0] + rawY[1]) / 2; // Average of top points
-    yMax = (rawY[2] + rawY[3]) / 2; // Average of bottom points
+    // Y values from top/bottom points
+    uint16_t yTop = (rawY[0] + rawY[1]) / 2;    // Average of top points
+    uint16_t yBottom = (rawY[2] + rawY[3]) / 2; // Average of bottom points
     
-    // Apply calibration
-    if(xMin < xMax && yMin < yMax) {
-        _min_x = xMin;
-        _max_x = xMax;
-        _min_y = yMin;
-        _max_y = yMax;
-        
+    // Determine min/max (handles inverted axes)
+    _min_x = (xLeft < xRight) ? xLeft : xRight;
+    _max_x = (xLeft < xRight) ? xRight : xLeft;
+    _min_y = (yTop < yBottom) ? yTop : yBottom;
+    _max_y = (yTop < yBottom) ? yBottom : yTop;
+    
+    // Check that we have valid ranges
+    if(_max_x > _min_x && _max_y > _min_y) {
         // Store in calData for saving to config
-        calData[0] = xMin;
-        calData[1] = xMax;
-        calData[2] = yMin;
-        calData[3] = yMax;
-        calData[4] = 0; // flags (can be used for XY swap, inversion)
+        calData[0] = _min_x;
+        calData[1] = _max_x;
+        calData[2] = _min_y;
+        calData[3] = _max_y;
+        calData[4] = 0;
         
         LOG_INFO(TAG_DRVR, "Calibration complete!");
-        LOG_INFO(TAG_DRVR, "X: %d - %d", _min_x, _max_x);
-        LOG_INFO(TAG_DRVR, "Y: %d - %d", _min_y, _max_y);
+        LOG_INFO(TAG_DRVR, "X: %d - %d (left=%d, right=%d)", _min_x, _max_x, xLeft, xRight);
+        LOG_INFO(TAG_DRVR, "Y: %d - %d (top=%d, bottom=%d)", _min_y, _max_y, yTop, yBottom);
         
         // Show success message
         haspTft.tft->fillScreen(col_black);
