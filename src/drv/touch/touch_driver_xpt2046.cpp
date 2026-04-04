@@ -49,76 +49,144 @@ XPT2046_Touchscreen xpt2046_ts(TOUCH_CS, TOUCH_IRQ);
 
 namespace dev {
 
+// Touch filtering configuration
+#define XPT2046_SAMPLES      5   // Number of samples to average
+#define XPT2046_DEBOUNCE     3   // Consecutive samples required for state change
+#define XPT2046_PRESSURE_MIN 10  // Minimum pressure (z) to register touch
+#define XPT2046_SMOOTHING    0.7f // Exponential smoothing factor (0-1, higher = more smoothing)
+
 IRAM_ATTR bool TouchXpt2046::read(lv_indev_drv_t* indev_driver, lv_indev_data_t* data)
 {
-    bool touched = xpt2046_ts.touched();
+    static uint8_t touch_count = 0;      // Consecutive touch samples
+    static uint8_t release_count = 0;    // Consecutive release samples
+    static bool touch_active = false;    // Current debounced touch state
+    static int16_t last_x = 0, last_y = 0; // Last reported coordinates for smoothing
     
-    if(touched) {
-        if(hasp_sleep_state != HASP_SLEEP_OFF) hasp_update_sleep_state(); // update Idle
-
+    // Check if touched with pressure validation
+    bool raw_touched = xpt2046_ts.touched();
+    bool valid_touch = false;
+    
+    if(raw_touched) {
+        // Quick check of pressure to filter out noise
         TS_Point p = xpt2046_ts.getPoint();
+        if(p.z >= XPT2046_PRESSURE_MIN) {
+            valid_touch = true;
+        }
+    }
+    
+    // Debounce touch state
+    if(valid_touch) {
+        touch_count++;
+        release_count = 0;
+    } else {
+        release_count++;
+        touch_count = 0;
+    }
+    
+    // Update debounced state
+    if(touch_count >= XPT2046_DEBOUNCE && !touch_active) {
+        touch_active = true;
+    } else if(release_count >= XPT2046_DEBOUNCE && touch_active) {
+        touch_active = false;
+    }
+    
+    // Process touch if active
+    if(touch_active) {
+        if(hasp_sleep_state != HASP_SLEEP_OFF) hasp_update_sleep_state();
         
-        // Apply calibration
-        int16_t x = p.x;
-        int16_t y = p.y;
+        // Collect multiple samples for averaging
+        int32_t sum_x = 0, sum_y = 0, sum_z = 0;
+        uint16_t valid_samples = 0;
         
-        // Swap X/Y if needed
-        #if XPT2046_XY_SWAP != 0
-        int16_t swap_tmp = x;
-        x = y;
-        y = swap_tmp;
-        #endif
-        
-        // Apply min/max calibration
-        if(x < _min_x) x = _min_x;
-        if(x > _max_x) x = _max_x;
-        if(y < _min_y) y = _min_y;
-        if(y > _max_y) y = _max_y;
-        
-        // Map to screen coordinates
-        x = map(x, _min_x, _max_x, 0, TFT_WIDTH - 1);
-        y = map(y, _min_y, _max_y, 0, TFT_HEIGHT - 1);
-        
-        // Invert if needed
-        #if XPT2046_X_INV != 0
-        x = TFT_WIDTH - 1 - x;
-        #endif
-        #if XPT2046_Y_INV != 0
-        y = TFT_HEIGHT - 1 - y;
-        #endif
-        
-        // Apply rotation
-        switch(_rotation) {
-            case 0:
-                data->point.x = x;
-                data->point.y = y;
-                break;
-            case 1: // 90 degrees
-                data->point.x = TFT_HEIGHT - 1 - y;
-                data->point.y = x;
-                break;
-            case 2: // 180 degrees
-                data->point.x = TFT_WIDTH - 1 - x;
-                data->point.y = TFT_HEIGHT - 1 - y;
-                break;
-            case 3: // 270 degrees
-                data->point.x = y;
-                data->point.y = TFT_WIDTH - 1 - x;
-                break;
-            default:
-                data->point.x = x;
-                data->point.y = y;
-                break;
+        for(int i = 0; i < XPT2046_SAMPLES; i++) {
+            if(xpt2046_ts.touched()) {
+                TS_Point p = xpt2046_ts.getPoint();
+                if(p.z >= XPT2046_PRESSURE_MIN) {
+                    sum_x += p.x;
+                    sum_y += p.y;
+                    sum_z += p.z;
+                    valid_samples++;
+                }
+            }
+            // Small delay between samples for stability
+            if(i < XPT2046_SAMPLES - 1) delayMicroseconds(100);
         }
         
-        data->state = LV_INDEV_STATE_PR;
-        hasp_set_sleep_offset(0); // Reset the offset
-
-    } else {
-        data->state = LV_INDEV_STATE_REL;
+        // Only process if we got enough valid samples
+        if(valid_samples >= (XPT2046_SAMPLES / 2)) {
+            // Calculate average
+            int16_t x = sum_x / valid_samples;
+            int16_t y = sum_y / valid_samples;
+            
+            // Apply calibration
+            #if XPT2046_XY_SWAP != 0
+            int16_t swap_tmp = x;
+            x = y;
+            y = swap_tmp;
+            #endif
+            
+            // Clamp to calibration range
+            if(x < _min_x) x = _min_x;
+            if(x > _max_x) x = _max_x;
+            if(y < _min_y) y = _min_y;
+            if(y > _max_y) y = _max_y;
+            
+            // Map to screen coordinates
+            x = map(x, _min_x, _max_x, 0, TFT_WIDTH - 1);
+            y = map(y, _min_y, _max_y, 0, TFT_HEIGHT - 1);
+            
+            // Apply inversion
+            #if XPT2046_X_INV != 0
+            x = TFT_WIDTH - 1 - x;
+            #endif
+            #if XPT2046_Y_INV != 0
+            y = TFT_HEIGHT - 1 - y;
+            #endif
+            
+            // Apply exponential smoothing to reduce jitter
+            if(last_x != 0 || last_y != 0) {
+                x = (int16_t)(XPT2046_SMOOTHING * x + (1.0f - XPT2046_SMOOTHING) * last_x);
+                y = (int16_t)(XPT2046_SMOOTHING * y + (1.0f - XPT2046_SMOOTHING) * last_y);
+            }
+            
+            // Apply rotation
+            switch(_rotation) {
+                case 0:
+                    data->point.x = x;
+                    data->point.y = y;
+                    break;
+                case 1:
+                    data->point.x = TFT_HEIGHT - 1 - y;
+                    data->point.y = x;
+                    break;
+                case 2:
+                    data->point.x = TFT_WIDTH - 1 - x;
+                    data->point.y = TFT_HEIGHT - 1 - y;
+                    break;
+                case 3:
+                    data->point.x = y;
+                    data->point.y = TFT_WIDTH - 1 - x;
+                    break;
+                default:
+                    data->point.x = x;
+                    data->point.y = y;
+                    break;
+            }
+            
+            // Store for next smoothing
+            last_x = x;
+            last_y = y;
+            
+            data->state = LV_INDEV_STATE_PR;
+            hasp_set_sleep_offset(0);
+            return false;
+        }
     }
-
-    /*Return `false` because we are not buffering and no more data to read*/
+    
+    // Touch released or invalid
+    data->state = LV_INDEV_STATE_REL;
+    last_x = 0;
+    last_y = 0;
     return false;
 }
 
