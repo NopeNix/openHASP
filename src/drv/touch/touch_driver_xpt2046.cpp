@@ -272,11 +272,15 @@ void TouchXpt2046::calibrate(uint16_t* calData)
     uint16_t yTop = (rawY[0] + rawY[1]) / 2;    // Average of top points
     uint16_t yBottom = (rawY[2] + rawY[3]) / 2; // Average of bottom points
     
+    LOG_INFO(TAG_DRVR, "Averages - xLeft=%d, xRight=%d, yTop=%d, yBottom=%d", xLeft, xRight, yTop, yBottom);
+    
     // Determine min/max (handles inverted axes)
     _min_x = (xLeft < xRight) ? xLeft : xRight;
     _max_x = (xLeft < xRight) ? xRight : xLeft;
     _min_y = (yTop < yBottom) ? yTop : yBottom;
     _max_y = (yTop < yBottom) ? yBottom : yTop;
+    
+    LOG_INFO(TAG_DRVR, "Min/Max - _min_x=%d, _max_x=%d, _min_y=%d, _max_y=%d", _min_x, _max_x, _min_y, _max_y);
     
     // Check that we have valid ranges
     if(_max_x > _min_x && _max_y > _min_y) {
