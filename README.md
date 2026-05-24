@@ -1,1 +1,212 @@
-[['GitHub release](https://img.shields.io/github/v/release/NopeNix/openHASP?include_prereleases)](https://github.com/NopeNix/openHASP/releases/latest)\n\n### Latest Firmware (v0.7.0.2-NopeNix)\n\n| File | Size | Description |\n|------|------|-------------|\n| **[sunton-8048s043r_full_16MB_*.bin](https://github.com/NopeNix/openHASP/releases/latest)** | 1.7 MB | Full firmware - first flash |\n| **[sunton-8048s043r_ota_*.bin](https://github.com/NopeNix/openHASP/releases/latest)** | 1.6 MB | OTA update image |\n| **[sunton-8048s050n_full_16MB_*.bin](https://github.com/NopeNix/openHASP/releases/latest)** | 1.6 MB | Full firmware for 8048S050N |\n\n### Quick Flash\n\n```bash\n# Download latest release, then flash:\nesptool.py --chip esp32s3 --port /dev/ttyUSB0 --baud 921600 \n  write_flash 0x0 sunton-8048s043r_full_16MB_*.bin\n```\n\n**[View All Releases →](https://github.com/NopeNix/openHASP/releases)**\n\n---\n\n## Quick Start - Docker Build (Recommended)\n\n### Prerequisites\n- Docker installed on your system\n- USB passthrough for flashing (Linux: add user to `dialout` group)\n\n### 1. Clone and Enter Repository\n\n```bash\ngit clone https://github.com/nopenix/openHASP.git\ncd openHASP\n```\n\n### 2. Build Using Docker\n\n```bash\n# Build the Docker image (first time only)\ndocker build -t openhasp-builder -f Dockerfile.platformio .\n\n# Start the build container\ndocker run -d --name openhasp-builder --privileged \n  -v "$(pwd):/workspace" \n  -v "openhasp-pio-cache:/root/.platformio" \n  -w /workspace \n  openhasp-builder tail -f /dev/null\n\n# Build the firmware (choose your environment)\ndocker exec openhasp-builder pio run -e sunton-8048s043r_16MB\n# or\ndocker exec openhasp-builder pio run -e sunton-8048s050n_16MB\n```\n\n### 3. Flash to Device\n\n```bash\n# Using esptool (outside container)\nesptool.py --chip esp32s3 --port /dev/ttyUSB0 --baud 921600 \n  write_flash 0x0 .pio/build/sunton-8048s043r_16MB/firmware.bin\n\n# Or copy the merged firmware\ncp build_output/firmware/sunton-8048s043r_full_16MB_*.bin /path/to/flash/\n```\n\n---\n\n## Alternative: Local Build (PlatformIO)\n\n### Prerequisites\n- Python 3.9+\n- PlatformIO Core: `pip install platformio`\n- Git submodules initialized\n\n### Build Steps\n\n```bash\n# Clone repository\ngit clone https://github.com/nopenix/openHASP.git\ncd openHASP\n\n# IMPORTANT: Initialize submodules (required!)\ngit submodule update --init --recursive\n\n# Build firmware (choose your environment)\npio run -e sunton-8048s043r_16MB\n# or\npio run -e sunton-8048s050n_16MB\n```\n\n---\n\n## Configuration\n\n### Touch Calibration (XPT2046 Only)\n\nThe XPT2046 touch controller may need calibration. Adjust these values in the config or via web UI:\n\n```ini\n-D XPT2046_X_MIN=200\n-D XPT2046_X_MAX=3700\n-D XPT2046_Y_MIN=200\n-D XPT2046_Y_MAX=3700\n-D XPT2046_XY_SWAP=0\n-D XPT2046_X_INV=0\n-D XPT2046_Y_INV=0\n```\n\n### Available Environments\n\n| Environment | Board | Flash | Touch | Notes |\n|-------------|-------|-------|-------|-------|\n| `sunton-8048s043r_16MB` | Sunton 8048S043R | 16MB | XPT2046 | Resistive touch |\n| `sunton-8048s043c_16MB` | Sunton 8048S043C | 16MB | GT911 | Capacitive variant |\n| `sunton-8048s050c_16MB` | Sunton 8048S050C | 16MB | GT911 | 5.0" capacitive |\n| `sunton-8048s050n_16MB` | Sunton 8048S050N | 16MB | None | 5.0" no touch |\n| `sunton-8048s070c_16MB` | Sunton 8048S070C | 16MB | GT911 | 7.0', 'version |\n\n---\n\n## Technical Changes\n\n### Files Added/Modified\n\n1. **New XPT2046 Touch Driver**\n   - `src/drv/touch/touch_driver_xpt2046.cpp`\n   - `src/drv/touch/touch_driver_xpt2046.h`\n\n2. **Modified for XPT2046 Support**\n   - `src/drv/touch/touch_driver.h` - Added ArduinoGFX XPT2046 selection\n   - `src/hasp_gui.cpp` - Added touch guard for no-touch builds\n   - `src/drv/old/hasp_drv_touch.cpp` - Conditional XPT2046 handling\n\n3. **Board Configuration**\n   - `user_setups/esp32s3/sunton-esp32-s3-tft.ini` - Added 8048s043r and 8048s050n environments\n\n4. **Library Changes**\n   - Renamed `lib/XPT2046_Touchscreen_ID542` → `lib/XPT2046_Touchscreen`\n   - Updated `library.json` for proper PlatformIO integration\n\n5. **Version & UI Fixes**\n   - `platformio.ini` - Version 0.7.0.2-NopeNix\n   - `data/edit.htm` - ACE editor 1.43.6 → 1.43.3\n   - `data/script.js` - ACE editor 1.43.6 → 1.43.3\n\n---\n\n## Troubleshooting\n\n### Touch Not Working\n1. Check wiring: SCLK=12, MISO=13, MOSI=11, CS=38, IRQ=18\n2. Calibrate XPT2046 values via web UI\n3. Check serial logs for "XPT2046 started', 'message\n\n### Build Fails\n1. Ensure submodules are initialized: `git submodule update --init --recursive`\n2. Check XPT2046 library is present in `lib/XPT2046_Touchscreen/`\n3. Try Docker build for consistent environment\n\n### Web Editor Not Saving\nThe ACE 1.43.6 CDN was broken. This fork uses 1.43.3 which works correctly.\n\n---\n\n## Automatic Builds\n\nThis repository uses **GitHub Actions** to automatically build and release firmware:\n\n- ✅ **Every push to `master`** triggers a new build\n- ✅ **Automatic releases** created with firmware binaries\n- ✅ **Version tracking** via git commit hash\n- ✅ **Build artifacts** available for download\n\n### Build Status\n\n[![Build and Release](https://github.com/NopeNix/openHASP/actions/workflows/build-and-release.yml/badge.svg)](https://github.com/NopeNix/openHASP/actions/workflows/build-and-release.yml)\n\n[View Build History →](https://github.com/NopeNix/openHASP/actions)\n\n---\n\n## Original Project\n\nThis fork is based on [openHASP](https://github.com/HASwitchPlate/openHASP) by the HASwitchPlate team.\n\n- Original documentation: https://www.openhasp.com/\n- Discord support: https://www.openhasp.com/discord\n- Original license: MIT\n\n---\n\n## Contributing\n\nContributions welcome! This fork focuses on:\n- Support for all Sunton 8048S series variants\n- XPT2046 resistive touch driver\n- No-touch configurations\n- Docker-based builds\n- Bug fixes for broken dependencies\n\n---\n\n## License\n\nMIT License - See [LICENSE](LICENSE) file for details.\n\n---\n\n## Badges\n\n[![GitHub Workflow Status](https://img.shields.io/badge/build-custom%20fork-blue)](https://github.com/nopenix/openHASP)\n[![GitHub release](https://img.shields.io/badge/version-0.7.0.2--NopeNix-orange)](https://github.com/nopenix/openHASP/releases)\n[![Target Device](https://img.shields.io/badge/device-Sunton%208048S%20Series-green)]()\n[![Touch Support](https://img.shields.io/badge/touch-XPT2046%20%7C%20GT911%20%7C%20None-yellow)]()']]
+[['GitHub release](https://img.shields.io/github/v/release/NopeNix/openHASP?include_prereleases)](https://github.com/NopeNix/openHASP/releases/latest)
+
+### Latest Firmware (v0.7.0.2-NopeNix)
+
+| File | Size | Description |
+|------|------|-------------|
+| **[sunton-8048s043r_full_16MB_*.bin](https://github.com/NopeNix/openHASP/releases/latest)** | 1.7 MB | Full firmware - first flash |
+| **[sunton-8048s043r_ota_*.bin](https://github.com/NopeNix/openHASP/releases/latest)** | 1.6 MB | OTA update image |
+| **[sunton-8048s050n_full_16MB_*.bin](https://github.com/NopeNix/openHASP/releases/latest)** | 1.6 MB | Full firmware for 8048S050N |
+
+### Quick Flash
+
+```bash
+# Download latest release, then flash:
+esptool.py --chip esp32s3 --port /dev/ttyUSB0 --baud 921600 
+  write_flash 0x0 sunton-8048s043r_full_16MB_*.bin
+```
+
+**[View All Releases →](https://github.com/NopeNix/openHASP/releases)**
+
+---
+
+## Quick Start - Docker Build (Recommended)
+
+### Prerequisites
+- Docker installed on your system
+- USB passthrough for flashing (Linux: add user to `dialout` group)
+
+### 1. Clone and Enter Repository
+
+```bash
+git clone https://github.com/nopenix/openHASP.git
+cd openHASP
+```
+
+### 2. Build Using Docker
+
+```bash
+# Build the Docker image (first time only)
+docker build -t openhasp-builder -f Dockerfile.platformio .
+
+# Start the build container
+docker run -d --name openhasp-builder --privileged 
+  -v "$(pwd):/workspace" 
+  -v "openhasp-pio-cache:/root/.platformio" 
+  -w /workspace 
+  openhasp-builder tail -f /dev/null
+
+# Build the firmware (choose your environment)
+docker exec openhasp-builder pio run -e sunton-8048s043r_16MB
+# or
+docker exec openhasp-builder pio run -e sunton-8048s050n_16MB
+```
+
+### 3. Flash to Device
+
+```bash
+# Using esptool (outside container)
+esptool.py --chip esp32s3 --port /dev/ttyUSB0 --baud 921600 
+  write_flash 0x0 .pio/build/sunton-8048s043r_16MB/firmware.bin
+
+# Or copy the merged firmware
+cp build_output/firmware/sunton-8048s043r_full_16MB_*.bin /path/to/flash/
+```
+
+---
+
+## Alternative: Local Build (PlatformIO)
+
+### Prerequisites
+- Python 3.9+
+- PlatformIO Core: `pip install platformio`
+- Git submodules initialized
+
+### Build Steps
+
+```bash
+# Clone repository
+git clone https://github.com/nopenix/openHASP.git
+cd openHASP
+
+# IMPORTANT: Initialize submodules (required!)
+git submodule update --init --recursive
+
+# Build firmware (choose your environment)
+pio run -e sunton-8048s043r_16MB
+# or
+pio run -e sunton-8048s050n_16MB
+```
+
+---
+
+## Configuration
+
+### Touch Calibration (XPT2046 Only)
+
+The XPT2046 touch controller may need calibration. Adjust these values in the config or via web UI:
+
+```ini
+-D XPT2046_X_MIN=200
+-D XPT2046_X_MAX=3700
+-D XPT2046_Y_MIN=200
+-D XPT2046_Y_MAX=3700
+-D XPT2046_XY_SWAP=0
+-D XPT2046_X_INV=0
+-D XPT2046_Y_INV=0
+```
+
+### Available Environments
+
+| Environment | Board | Flash | Touch | Notes |
+|-------------|-------|-------|-------|-------|
+| `sunton-8048s043r_16MB` | Sunton 8048S043R | 16MB | XPT2046 | Resistive touch |
+| `sunton-8048s043c_16MB` | Sunton 8048S043C | 16MB | GT911 | Capacitive variant |
+| `sunton-8048s050c_16MB` | Sunton 8048S050C | 16MB | GT911 | 5.0" capacitive |
+| `sunton-8048s050n_16MB` | Sunton 8048S050N | 16MB | None | 5.0" no touch |
+| `sunton-8048s070c_16MB` | Sunton 8048S070C | 16MB | GT911 | 7.0', 'capacitive |
+
+---
+
+## Technical Changes
+
+### Files Added/Modified
+
+1. **New XPT2046 Touch Driver**
+   - `src/drv/touch/touch_driver_xpt2046.cpp`
+   - `src/drv/touch/touch_driver_xpt2046.h`
+
+2. **Modified for XPT2046 Support**
+   - `src/drv/touch/touch_driver.h` - Added ArduinoGFX XPT2046 selection
+   - `src/hasp_gui.cpp` - Added touch guard for no-touch builds
+   - `src/drv/old/hasp_drv_touch.cpp` - Conditional XPT2046 handling
+
+3. **Board Configuration**
+   - `user_setups/esp32s3/sunton-esp32-s3-tft.ini` - Added 8048s043r and 8048s050n environments
+
+4. **Library Changes**
+   - Renamed `lib/XPT2046_Touchscreen_ID542` → `lib/XPT2046_Touchscreen`
+   - Updated `library.json` for proper PlatformIO integration
+
+5. **Version & UI Fixes**
+   - `platformio.ini` - Version 0.7.0.2-NopeNix
+   - `data/edit.htm` - ACE editor 1.43.6 → 1.43.3
+   - `data/script.js` - ACE editor 1.43.6 → 1.43.3
+
+---
+
+## Troubleshooting
+
+### Touch Not Working
+1. Check wiring: SCLK=12, MISO=13, MOSI=11, CS=38, IRQ=18
+2. Calibrate XPT2046 values via web UI
+3. Check serial logs for "XPT2046 started', 'Build Fails
+1. Ensure submodules are initialized: `git submodule update --init --recursive`
+2. Check XPT2046 library is present in `lib/XPT2046_Touchscreen/`
+3. Try Docker build for consistent environment
+
+### Web Editor Not Saving
+The ACE 1.43.6 CDN was broken. This fork uses 1.43.3 which works correctly.
+
+---
+
+## Automatic Builds
+
+This repository uses **GitHub Actions** to automatically build and release firmware:
+
+- ✅ **Every push to `master`** triggers a new build
+- ✅ **Automatic releases** created with firmware binaries
+- ✅ **Version tracking** via git commit hash
+- ✅ **Build artifacts** available for download
+
+### Build Status
+
+[![Build and Release](https://github.com/NopeNix/openHASP/actions/workflows/build-and-release.yml/badge.svg)](https://github.com/NopeNix/openHASP/actions/workflows/build-and-release.yml)
+
+[View Build History →](https://github.com/NopeNix/openHASP/actions)
+
+---
+
+## Original Project
+
+This fork is based on [openHASP](https://github.com/HASwitchPlate/openHASP) by the HASwitchPlate team.
+
+- Original documentation: https://www.openhasp.com/
+- Discord support: https://www.openhasp.com/discord
+- Original license: MIT
+
+---
+
+## Contributing
+
+Contributions welcome! This fork focuses on:
+- Support for all Sunton 8048S series variants
+- XPT2046 resistive touch driver
+- No-touch configurations
+- Docker-based builds
+- Bug fixes for broken dependencies
+
+---
+
+## License
+
+MIT License - See [LICENSE](LICENSE) file for details.
+
+---
+
+## Badges
+
+[![GitHub Workflow Status](https://img.shields.io/badge/build-custom%20fork-blue)](https://github.com/nopenix/openHASP)
+[![GitHub release](https://img.shields.io/badge/version-0.7.0.2--NopeNix-orange)](https://github.com/nopenix/openHASP/releases)
+[![Target Device](https://img.shields.io/badge/device-Sunton%208048S%20Series-green)]()
+[![Touch Support](https://img.shields.io/badge/touch-XPT2046%20%7C%20GT911%20%7C%20None-yellow)]()']]
