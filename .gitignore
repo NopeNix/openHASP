@@ -51,6 +51,9 @@ package-lock.json
 ## Test result files
 *.xml
 
+## Build artifacts
+compile_commands.json
+
 ## Visual Studio Code specific ######
 !.vscode
 .vscode/*
