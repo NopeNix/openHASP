@@ -1,4 +1,4 @@
-name: Build Firmware
+name: Build and Release Firmware
 
 on:
   push:
@@ -10,17 +10,33 @@ on:
   workflow_dispatch:
     inputs:
       create_release:
-        description: 'Create Release?'
+        description: 'Create GitHub Release?'
         required: true
         default: false
         type: boolean
 
 env:
+  # Default target environment - can be overridden
   TARGET_ENV: sunton-8048s043r_16MB
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - env: sunton-8048s043r_16MB
+            out: sunton-8048s043r
+          - env: sunton-8048s043c_16MB
+            out: sunton-8048s043c
+          - env: sunton-8048s050c_16MB
+            out: sunton-8048s050c
+          - env: sunton-8048s050n_16MB
+            out: sunton-8048s050n
+          - env: sunton-8048s070c_16MB
+            out: sunton-8048s070c
     
     steps:
     - name: Checkout repository
@@ -29,45 +45,65 @@ jobs:
         submodules: false
         fetch-depth: 0
     
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+    - name: Cache pip
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
     
-    - name: Build Docker image
+    - name: Cache PlatformIO
+      uses: actions/cache@v4
+      with:
+        path: ~/.platformio
+        key: ${{ runner.os }}-pio-${{ hashFiles('platformio.ini') }}-${{ matrix.env }}
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+    
+    - name: Install PlatformIO & Dependencies
       run: |
-        docker build -t openhasp-builder -f Dockerfile.platformio .
+        python -m pip install --upgrade pip
+        pip install --upgrade platformio dulwich
+    
+    - name: Enable ESP32 platforms from platformio_override-template.ini
+      run: |
+        sed 's/; user_setups/esp32/user_setups/esp32/g' platformio_override-template.ini > platformio_override.ini
     
     - name: Build firmware
       run: |
-        docker run --rm -v "$(pwd):/workspace" \
-          -v "openhasp-pio-cache:/root/.platformio" \
-          -w /workspace openhasp-builder \
-          pio run -e ${{ env.TARGET_ENV }}
+        pio run -e ${{ matrix.env }}
     
     - name: List build outputs
       run: |
         echo "=== Build outputs ==="
-        ls -lah .pio/build/${{ env.TARGET_ENV }} /
-        echo ""
-        echo "=== Release outputs ==="
         ls -lah build_output/firmware/ || echo "No release output directory"
+        echo "=== PlatformIO build dir ==="
+        ls -lah .pio/build/${{ matrix.env }}/ || echo "No PIO build directory"
     
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: firmware-${{ env.TARGET_ENV }}
+        name: firmware-${{ matrix.out }}
         path: |
           build_output/firmware/*.bin
-          .pio/build/${{ env.TARGET_ENV }}/firmware.bin
+          .pio/build/${{ matrix.env }}/firmware.bin
         if-no-files-found: error
     
-    - name: Get version info
-      id: get_version
+    - name: Zip artifact for deployment
+      if: github.ref != 'refs/heads/master' && github.ref != 'refs/heads/main'
       run: |
-        # Extract version from platformio.ini
-        VERSION=$(grep "HASP_VER_REV" platformio.ini | head -1 | sed 's/.*HASP_VER_REV=//' | tr -d ' \t')
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
-        echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-        echo "Build version: $VERSION"
+        zip ${{ matrix.out }}.zip build_output/firmware/*.bin -r
+    
+    - name: On Release, upload assets to that Release
+      if: github.ref != 'refs/heads/master' && github.ref != 'refs/heads/main'
+      uses: AButler/upload-release-assets@v3.0
+      with:
+        files: ${{ matrix.out }}.zip
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
 
   release:
     needs: build
@@ -79,10 +115,9 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
     
-    - name: Download build artifacts
+    - name: Download all build artifacts
       uses: actions/download-artifact@v4
       with:
-        name: firmware-${{ env.TARGET_ENV }}
         path: build_output/firmware/
     
     - name: Get version info
@@ -96,9 +131,9 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}-{1}', steps.get_version.outputs.version, steps.get_version.outputs.short_sha) }}
-        name: ${{ github.ref_type == 'tag' && github.ref_name || format('openHASP v{0} (Sunton 8048S043R)', steps.get_version.outputs.version) }}
+        name: ${{ github.ref_type == 'tag' && github.ref_name || format('openHASP v{0}', steps.get_version.outputs.version) }}
         body: |
-          ## openHASP Firmware for Sunton ESP32-8048S043R
+          ## openHASP Firmware
           
           **Version:** ${{ steps.get_version.outputs.version }}  
           **Commit:** ${{ github.sha }}  
@@ -107,24 +142,17 @@ jobs:
           ### What's Included
           - XPT2046 Resistive Touch Support
           - ArduinoGFX Display Driver
-          - Docker-based reproducible build
-          - Fixed ACE Editor (1.43.3)
-          
-          ### Hardware
-          - **Board:** Sunton ESP32-8048S043R
-          - **Flash:** 16MB
-          - **Display:** 800x480 ST7262 RGB
-          - **Touch:** XPT2046 SPI
+          - Reproducible Docker-based build
           
           ### Flashing Instructions
           ```bash
-          esptool.py --chip esp32s3 --port /dev/ttyUSB0 --baud 921600 \
-            write_flash 0x0 sunton-8048s043r_full_16MB_*.bin
+          esptool.py --chip esp32s3 --port /dev/ttyUSB0 --baud 921600 
+            write_flash 0x0 build_output/firmware/*_full_*.bin
           ```
           
           ### Files
-          - `sunton-8048s043r_full_16MB_*.bin` - Full firmware image (first flash)
-          - `sunton-8048s043r_ota_*.bin` - OTA update image
+          - `*_full_*.bin` - Full firmware image (first flash)
+          - `*_ota_*.bin` - OTA update image
           
           ### Documentation
           - [README](https://github.com/${{ github.repository }}/blob/master/README.md)
@@ -133,8 +161,8 @@ jobs:
           ### Docker Build
           ```bash
           docker build -t openhasp-builder -f Dockerfile.platformio .
-          docker run --rm -v "$(pwd):/workspace" openhasp-builder \
-            pio run -e sunton-8048s043r_16MB
+          docker run --rm -v "$(pwd):/workspace" openhasp-builder 
+            pio run -e <environment>
           ```
         files: |
           build_output/firmware/*.bin
