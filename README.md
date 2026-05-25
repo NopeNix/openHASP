@@ -1,12 +1,4 @@
-[['GitHub release](https://img.shields.io/github/v/release/NopeNix/openHASP?include_prereleases)](https://github.com/NopeNix/openHASP/releases/latest)
-
-### Latest Firmware (v0.7.0.2-NopeNix)
-
-| File | Size | Description |
-|------|------|-------------|
-| **[sunton-8048s043r_full_16MB_*.bin](https://github.com/NopeNix/openHASP/releases/latest)** | 1.7 MB | Full firmware - first flash |
-| **[sunton-8048s043r_ota_*.bin](https://github.com/NopeNix/openHASP/releases/latest)** | 1.6 MB | OTA update image |
-| **[sunton-8048s050n_full_16MB_*.bin](https://github.com/NopeNix/openHASP/releases/latest)** | 1.6 MB | Full firmware for 8048S050N |
+[![Build and Release Firmware](https://github.com/NopeNix/openHASP/actions/workflows/build-and-release.yml/badge.svg)](https://github.com/NopeNix/openHASP/actions/workflows/build-and-release.yml)
 
 ### Quick Flash
 
