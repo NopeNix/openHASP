@@ -71,7 +71,7 @@ jobs:
     
     - name: Enable ESP32 platforms from platformio_override-template.ini
       run: |
-        sed 's/; user_setups/esp32/user_setups/esp32/g' platformio_override-template.ini > platformio_override.ini
+        sed 's/; user_setups\/esp32/user_setups\/esp32/g' platformio_override-template.ini > platformio_override.ini
     
     - name: Build firmware
       run: |
